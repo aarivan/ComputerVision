@@ -269,22 +269,22 @@ while True:
 	faces_new_mean_k = np.zeros((1, 100))
 	non_faces_new_mean_k = np.zeros((1, 100))
 
-	faces_new_mean_k = calculate_new_mean(faces_images_grey_scaled_matrix, faces_mean_k, faces_E_hi, faces_new_mean_k, faces_E_hi_sum, 100)
-	non_faces_new_mean_k = calculate_new_mean(non_faces_images_grey_scaled_matrix, non_faces_mean_k, non_faces_E_hi, non_faces_new_mean_k, non_faces_E_hi_sum, 100)
+	faces_mean_k = faces_new_mean_k = calculate_new_mean(faces_images_grey_scaled_matrix, faces_mean_k, faces_E_hi, faces_new_mean_k, faces_E_hi_sum, 100)
+	non_faces_mean_k = non_faces_new_mean_k = calculate_new_mean(non_faces_images_grey_scaled_matrix, non_faces_mean_k, non_faces_E_hi, non_faces_new_mean_k, non_faces_E_hi_sum, 100)
 
 	# Calculating New Sigma
 	faces_new_sig_k = np.zeros((100, 100))
 	non_faces_new_sig_k = np.zeros((100, 100))
 
-	faces_new_sig_k = calculate_new_sig(faces_images_grey_scaled_matrix, faces_mean_k, faces_E_hi, faces_E_hi_sum, faces_new_sig_k, 100)
-	non_faces_new_sig_k = calculate_new_sig(non_faces_images_grey_scaled_matrix, non_faces_mean_k, non_faces_E_hi, non_faces_E_hi_sum, non_faces_new_sig_k, 100)
+	faces_sig_k = faces_new_sig_k = calculate_new_sig(faces_images_grey_scaled_matrix, faces_mean_k, faces_E_hi, faces_E_hi_sum, faces_new_sig_k, 100)
+	non_faces_sig_k = non_faces_new_sig_k = calculate_new_sig(non_faces_images_grey_scaled_matrix, non_faces_mean_k, non_faces_E_hi, non_faces_E_hi_sum, non_faces_new_sig_k, 100)
 
 	faces_E_log_hi_sum = np.sum(faces_E_log_hi, axis = 1)
 	non_faces_E_log_hi_sum = np.sum(non_faces_E_log_hi, axis = 1)
 
 	# Calculating New Nu
-	faces_new_nu = optimize.fminbound(t_cost, 0, 10000, args=(faces_E_hi, faces_E_hi_sum, faces_E_log_hi, faces_E_log_hi_sum, 1000))
-	non_faces_new_nu = optimize.fminbound(t_cost, 0, 10000, args=(non_faces_E_hi, non_faces_E_hi_sum, non_faces_E_log_hi, non_faces_E_log_hi_sum, 1000))
+	faces_nu_k = optimize.fminbound(t_cost, 0, 10000, args=(faces_E_hi, faces_E_hi_sum, faces_E_log_hi, faces_E_log_hi_sum, 1000))
+	non_faces_nu_k = optimize.fminbound(t_cost, 0, 10000, args=(non_faces_E_hi, non_faces_E_hi_sum, non_faces_E_log_hi, non_faces_E_log_hi_sum, 1000))
 	
 	# Calculating Log likelihood
 	faces_new_delta_i = np.zeros((1, 1000))
@@ -363,3 +363,63 @@ print non_faces_sig_k_final.shape
 print non_faces_sig_k_final
 
 
+'''
+Iterations Completed: 101
+
+10000
+(100,)
+[254.776 254.714 254.081 253.86  254.159 254.08  254.01  253.895 254.779
+ 254.609 254.818 253.685 251.906 251.762 252.045 251.875 252.027 251.702
+ 253.353 253.899 254.28  251.86  126.928 145.293 155.198 155.329 143.431
+ 114.909 235.105 243.242 254.209 250.293 126.677 140.474 148.614 147.79
+ 137.697 112.167 232.814 242.671 254.23  250.426 123.917 114.24  123.779
+ 121.804 114.316 114.277 230.727 241.738 254.314 250.852 139.712 139.512
+ 140.834 142.2   140.836 132.612 233.078 243.514 254.348 250.846 134.039
+ 136.914 131.911 130.818 137.338 124.77  232.295 243.004 254.154 251.006
+ 125.284 126.036 121.072 120.323 124.654 118.213 230.697 242.26  254.691
+ 251.729 238.059 239.507 239.255 239.029 238.923 238.353 248.776 253.743
+ 254.73  252.015 245.502 246.377 245.857 246.05  246.106 245.346 250.602
+ 254.362]
+(100, 100)
+[[ 8.54982400e+00  8.88936000e-01  5.16214400e+00 ... -1.69849600e+00
+  -8.60152000e-01 -5.91200000e-03]
+ [ 8.88936000e-01  1.43582040e+01  2.27721660e+01 ... -2.11304400e+00
+  -7.60828000e-01  3.17532000e-01]
+ [ 5.16214400e+00  2.27721660e+01  1.06516439e+02 ... -8.02302600e+00
+  -3.37676200e+00 -3.47322000e-01]
+ ...
+ [-1.69849600e+00 -2.11304400e+00 -8.02302600e+00 ...  1.32542028e+03
+   5.58380708e+02  9.15557480e+01]
+ [-8.60152000e-01 -7.60828000e-01 -3.37676200e+00 ...  5.58380708e+02
+   6.96391596e+02  1.06598076e+02]
+ [-5.91200000e-03  3.17532000e-01 -3.47322000e-01 ...  9.15557480e+01
+   1.06598076e+02  1.05604956e+02]]
+
+10000
+(100,)
+[91.255 90.27  90.716 89.922 90.944 88.477 87.211 87.137 87.519 90.007
+ 91.827 89.937 90.559 90.244 90.874 89.86  88.283 87.91  87.484 89.826
+ 89.799 88.769 89.385 89.109 89.381 89.77  88.787 87.379 88.683 89.761
+ 89.961 89.216 89.657 90.118 90.235 89.685 88.847 87.664 89.397 90.713
+ 89.595 88.878 89.514 89.769 89.757 88.573 87.517 88.023 88.302 89.494
+ 89.797 88.788 89.073 89.037 88.798 89.13  88.259 88.089 89.067 88.472
+ 90.31  89.594 88.04  89.237 88.227 88.688 89.567 87.395 87.611 87.724
+ 88.892 88.719 88.805 89.847 88.495 89.421 89.732 86.685 86.859 87.242
+ 88.93  88.47  88.548 88.894 88.506 88.65  88.376 87.667 88.388 87.959
+ 90.374 89.056 89.319 88.728 88.885 88.219 89.627 88.218 87.803 87.568]
+(100, 100)
+[[5112.583975 4430.27215  3980.62442  ... 2314.35841  2186.324235
+  2149.57416 ]
+ [4430.27215  5077.8651   4568.86668  ... 2450.45114  2380.28819
+  2346.16764 ]
+ [3980.62442  4568.86668  5236.253344 ... 2840.755912 2745.806052
+  2665.992312]
+ ...
+ [2314.35841  2450.45114  2840.755912 ... 5312.420476 4842.782946
+  4518.903176]
+ [2186.324235 2380.28819  2745.806052 ... 4842.782946 5349.388191
+  4873.198896]
+ [2149.57416  2346.16764  2665.992312 ... 4518.903176 4873.198896
+  5211.649376]]
+
+  '''
