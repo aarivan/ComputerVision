@@ -43,7 +43,8 @@ def find_mean(matrix):
     return np.mean(matrix, axis = 0)
 
 
-def  find_variance(matrix, mean_k, variance):
+def  find_variance(matrix, mean_k):
+    variance = np.zeros((100, 100))
     for i in range(0, 1000):
         data = matrix[i, :].reshape((100, 1))
         temp = data - mean_k.reshape((100, 1))
@@ -62,7 +63,8 @@ def calculate_E_hi_sub_calculation(phi, inv_sig):
     return np.linalg.inv(product_matrix + identity_matrix)
 
 
-def calculate_E_hi(phi, inv_sig, matrix, matrix_mean, E_hi):
+def calculate_E_hi(phi, inv_sig, matrix, matrix_mean):
+    E_hi = np.zeros((1000, 4))
     phi_transpose = phi.T
     phi_transpose_times_sig_inv = np.matmul(phi_transpose, inv_sig)
     
@@ -78,25 +80,28 @@ def calculate_E_hi(phi, inv_sig, matrix, matrix_mean, E_hi):
     return E_hi
 
 
-def calculate_E_hi_Ehi_T(faces_phi, faces_inv_sig, E_hi, E_hi_hi_T):
-    faces_temp_inv = calculate_E_hi_sub_calculation(faces_phi, faces_inv_sig) 
+def calculate_E_hi_Ehi_T(phi, inv_sig, E_hi):
+    E_hi_hi_T = np.zeros((4, 4, 1000))
+    inv_tmp = calculate_E_hi_sub_calculation(phi, inv_sig) 
     for i in range(0, 1000):
         temp_E_hi = E_hi[i, :].reshape((4, 1))
         temp = np.matmul(temp_E_hi, temp_E_hi.T)
-        temp += faces_temp_inv 
+        temp += inv_tmp 
         E_hi_hi_T[:, :, i] = temp
 
     return E_hi_hi_T
 
 
-def calculate_E_hi_hi_T_sum_inv(E_hi_hi_T_sum_inv, E_hi_hi_T):
+def calculate_E_hi_hi_T_sum_inv(E_hi_hi_T):
+    E_hi_hi_T_sum_inv = np.zeros((4, 4))
     for i in range(0, 1000):
         E_hi_hi_T_sum_inv += E_hi_hi_T[:, :, i]
     E_hi_hi_T_sum_inv = np.linalg.inv(E_hi_hi_T_sum_inv)
     return E_hi_hi_T_sum_inv
 
 
-def calculate_new_phi(matrix, matrix_mean, E_hi, phi_new):
+def calculate_new_phi(matrix, matrix_mean, E_hi):
+    phi_new = np.zeros((100, 4))
     for i in range(0, 1000):
         data = matrix[i, :].reshape((100, 1))
         temp_mean = matrix_mean.reshape((100, 1))
@@ -106,7 +111,8 @@ def calculate_new_phi(matrix, matrix_mean, E_hi, phi_new):
     return phi_new
 
 
-def calculate_new_sigma(matrix, matrix_mean, E_hi, phi, sig_new):
+def calculate_new_sigma(matrix, matrix_mean, E_hi, phi):
+    sig_new = np.zeros((100, 100))
     for i in range(0, 1000):
         data = matrix[i, :].reshape((100, 1))
         temp_mean = matrix_mean.reshape((100, 1))
@@ -119,6 +125,14 @@ def calculate_new_sigma(matrix, matrix_mean, E_hi, phi, sig_new):
     sig_new = sig_new.diagonal().reshape((1, 100))
     sig_new = sig_new / 1000
     return sig_new
+
+
+def calculate_L(pdf):
+    L = 0
+    for i in range(0, 1000):
+        if not pdf[i] in [0.0]:
+            L += np.log(pdf[i])
+    return L
 
 
 imageDirFaces = "/home/aarivan/Desktop/computer_vision/projects/ComputerVision/project_1/extracted_data/train_data/train_faces/"
@@ -190,11 +204,11 @@ np.random.seed(0)
 faces_phi = np.random.randn(100, 4)
 non_faces_phi = np.random.randn(100, 4)
 
-faces_sig = np.zeros((100, 100))
-non_faces_sig = np.zeros((100, 100))
+# faces_sig = np.zeros((100, 100))
+# non_faces_sig = np.zeros((100, 100))
 
-faces_sig = find_variance(faces_images_grey_scaled_matrix, faces_matrix_mean, faces_sig)
-non_faces_sig = find_variance(non_faces_images_grey_scaled_matrix, non_faces_matrix_mean, non_faces_sig)
+faces_sig = find_variance(faces_images_grey_scaled_matrix, faces_matrix_mean)
+non_faces_sig = find_variance(non_faces_images_grey_scaled_matrix, non_faces_matrix_mean)
 
 faces_sig = np.square(faces_sig)
 non_faces_sig = np.square(non_faces_sig)
@@ -208,9 +222,9 @@ non_faces_sig /= 1000
 faces_sig = faces_sig.reshape((1, 100))
 non_faces_sig = non_faces_sig.reshape((1, 100))
 
-iterations = 0
-previous_L = 1000000
-precision = 0.01
+loop_count = 0
+faces_previous_L = 1000000
+non_faces_previous_L = 1000000
 
 while True:
 
@@ -223,60 +237,90 @@ while True:
     non_faces_inv_sig = np.diag(non_faces_divide_array[0])
 
     # Calculating E_hi    
-    faces_E_hi = np.zeros((1000, 4))
-    non_faces_E_hi = np.zeros((1000, 4))
-
-    faces_E_hi = calculate_E_hi(faces_phi, faces_inv_sig, faces_images_grey_scaled_matrix, faces_matrix_mean, faces_E_hi)
-    non_faces_E_hi = calculate_E_hi(non_faces_phi, non_faces_inv_sig, non_faces_images_grey_scaled_matrix, non_faces_matrix_mean, non_faces_E_hi)
+    faces_E_hi = calculate_E_hi(faces_phi, faces_inv_sig, faces_images_grey_scaled_matrix, faces_matrix_mean)
+    non_faces_E_hi = calculate_E_hi(non_faces_phi, non_faces_inv_sig, non_faces_images_grey_scaled_matrix, non_faces_matrix_mean)
 
     # Calculating E_hi_hi_T
-    faces_E_hi_hi_T = np.zeros((4, 4, 1000))
-    faces_E_hi_hi_T = calculate_E_hi_Ehi_T(faces_phi, faces_inv_sig, faces_E_hi, faces_E_hi_hi_T)
+    # faces_E_hi_hi_T = np.zeros((4, 4, 1000))
+    faces_E_hi_hi_T = calculate_E_hi_Ehi_T(faces_phi, faces_inv_sig, faces_E_hi)
 
-    non_faces_E_hi_hi_T = np.zeros((4, 4, 1000))
-    non_faces_E_hi_hi_T = calculate_E_hi_Ehi_T(non_faces_phi, non_faces_inv_sig, non_faces_E_hi, non_faces_E_hi_hi_T)
-    
+    # non_faces_E_hi_hi_T = np.zeros((4, 4, 1000))
+    non_faces_E_hi_hi_T = calculate_E_hi_Ehi_T(non_faces_phi, non_faces_inv_sig, non_faces_E_hi)
+
 
     ## MAXIMIZATION STEP ##
 
-    faces_E_hi_hi_T_sum_inv = np.zeros((4, 4))
-    faces_E_hi_hi_T_sum_inv = calculate_E_hi_hi_T_sum_inv(faces_E_hi_hi_T_sum_inv, faces_E_hi_hi_T)
-
-    non_faces_E_hi_hi_T_sum_inv = np.zeros((4, 4))
-    non_faces_E_hi_hi_T_sum_inv = calculate_E_hi_hi_T_sum_inv(faces_E_hi_hi_T_sum_inv, faces_E_hi_hi_T)
+    faces_E_hi_hi_T_sum_inv = calculate_E_hi_hi_T_sum_inv(faces_E_hi_hi_T)
+    non_faces_E_hi_hi_T_sum_inv = calculate_E_hi_hi_T_sum_inv(non_faces_E_hi_hi_T)
 
     # Calculating new phi 
-    faces_phi_new = np.zeros((100, 4))
-    faces_phi_new = calculate_new_phi(faces_images_grey_scaled_matrix, faces_matrix_mean, faces_E_hi, faces_phi_new)
+    
+    faces_phi_new = calculate_new_phi(faces_images_grey_scaled_matrix, faces_matrix_mean, faces_E_hi)
     faces_phi_new = np.matmul(faces_phi_new, faces_E_hi_hi_T_sum_inv)
     faces_phi = faces_phi_new
-
-    non_faces_phi_new = np.zeros((100, 4))
-    non_faces_phi_new = calculate_new_phi(faces_images_grey_scaled_matrix, faces_matrix_mean, faces_E_hi, faces_phi_new)
+    # print faces_phi
+    
+    non_faces_phi_new = calculate_new_phi(non_faces_images_grey_scaled_matrix, non_faces_matrix_mean, non_faces_E_hi)
     non_faces_phi_new = np.matmul(non_faces_phi_new, non_faces_E_hi_hi_T_sum_inv)
     non_faces_phi = non_faces_phi_new
     
+
     # Calculating new sigma
-    faces_sig_new = np.zeros((100, 100))
-    faces_sig = faces_sig_new = calculate_new_sigma(faces_images_grey_scaled_matrix, faces_matrix_mean, faces_E_hi, faces_phi, faces_sig_new)
-
-    non_faces_sig_new = np.zeros((100, 100))
-    non_faces_sig = non_faces_sig_new = calculate_new_sigma(non_faces_images_grey_scaled_matrix, non_faces_matrix_mean, non_faces_E_hi, non_faces_phi, non_faces_sig_new)
+    faces_sig = faces_sig_new = calculate_new_sigma(faces_images_grey_scaled_matrix, faces_matrix_mean, faces_E_hi, faces_phi)
+    non_faces_sig = non_faces_sig_new = calculate_new_sigma(non_faces_images_grey_scaled_matrix, non_faces_matrix_mean, non_faces_E_hi, non_faces_phi)
     
-
     # Calculating Diagonal Covariance
     faces_sig_diag = np.diag(faces_sig[0])
     non_faces_sig_diag = np.diag(non_faces_sig[0])
+    
 
-    ## Computing data log likelihood
+    # Computing data log likelihood
     faces_mvn_cov = np.matmul(faces_phi, faces_phi.T) 
     faces_mvn_cov += faces_sig_diag
-    ##### ------------- yet to handle positive semi-definite error ----------- #####
     faces_mvn = multivariate_normal(faces_matrix_mean[0], faces_mvn_cov)
     faces_pdf = faces_mvn.pdf(faces_images_grey_scaled_matrix)
 
+    ##### ------------- to handle positive semi-definite error ----------- #####
+    # faces_diag = np.amax(faces_mvn_cov)
+    # covariance_epsilon = math.sqrt(faces_diag) - 0.0001
+    # faces_mvn_cov = near_psd(faces_mvn_cov, covariance_epsilon)
+    # print faces_mvn_cov
+    ##### ------------- xxxxxxxxxxxx ------------- ##### 
+    # faces_mvn = multivariate_normal(faces_matrix_mean[0], faces_mvn_cov)
+    # faces_pdf = faces_mvn.pdf(faces_images_grey_scaled_matrix)
+    
     non_faces_mvn_cov = np.matmul(non_faces_phi, non_faces_phi.T) 
     non_faces_mvn_cov += non_faces_sig_diag
-    ##### ------------- yet to handle positive semi-definite error ----------- #####
     non_faces_mvn = multivariate_normal(non_faces_matrix_mean[0], non_faces_mvn_cov)
     non_faces_pdf = non_faces_mvn.pdf(non_faces_images_grey_scaled_matrix)
+    
+    ##### ------------- to handle positive semi-definite error ----------- #####
+    # non_face_nearest_cov = near_psd(non_face_sig_k[:, :, i], non_face_covariance_epsilon[i])
+    # non_faces_diag = np.amax(non_faces_mvn_cov)
+    # non_faces_covariance_epsilon = math.sqrt(non_faces_diag) - 0.0001
+    # non_faces_mvn_cov = near_psd(non_faces_mvn_cov, non_faces_covariance_epsilon)
+    # print non_faces_mvn_cov
+
+    # non_faces_mvn = multivariate_normal(non_faces_matrix_mean[0], non_faces_mvn_cov)
+    # non_faces_pdf = non_faces_mvn.pdf(non_faces_images_grey_scaled_matrix)
+    
+
+    # Calculate L
+    faces_L = calculate_L(faces_pdf)
+    non_faces_L = calculate_L(non_faces_pdf)
+    
+    loop_count += 1
+    print
+    print "Iterations Completed: " + str(loop_count)
+    print
+
+    if abs(faces_L - faces_previous_L) > 0.01:
+        faces_previous_L = faces_L
+    if abs(faces_L - faces_previous_L) > 0.01:
+        non_faces_previous_L = non_faces_L
+    if loop_count > 100:
+        break
+
+# print faces_previous_L, faces_L
+# print non_faces_previous_L, non_faces_L
+# NEED TO CHECK THE VALUES OF THESE - mainly L for faces and non faces_L 
