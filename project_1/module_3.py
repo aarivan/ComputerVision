@@ -47,25 +47,46 @@ def t_cost(nu, E_h_i, E_h_i_sum, E_log_h_i, E_log_h_i_sum, size):
 	val -= (nu_half * E_h_i_sum)
 	return val
 
+def multivariate_t(X, mean, covariance, nu, D, size):
+    c = np.exp(special.gammaln((nu + D) / 2)) - special.gammaln(nu / 2)
+    c = c / (((nu * math.pi) ** (D / 2)) * (math.sqrt(np.linalg.det(covariance))))
+
+    pdf = np.zeros((1, size))
+    temp_mean = mean.reshape((D, 1))
+    for i in range(0, size):
+        temp_data = X[i, :].reshape((D, 1))
+        temp_data_minus_mean = temp_data - temp_mean
+        temp_data_minus_mean_transpose_inv_sig = np.matmul(temp_data_minus_mean.T, np.linalg.inv(covariance))
+        temp_data_minus_mean_transpose_inv_sig_data_minus_mean = np.matmul(temp_data_minus_mean_transpose_inv_sig, temp_data_minus_mean)
+        pdf[0, i] = temp_data_minus_mean_transpose_inv_sig_data_minus_mean
+
+    for i in range(0, size):
+        pdf[0, i] = 1 + (pdf[0, i] / nu)
+        pdf[0, i] = pdf[0, i] ** (-1 * (nu + D) / 2)
+        pdf[0, i] = c * pdf[0, i]
+    
+    return pdf
+
 
 def find_mean(matrix):
 	return np.mean(matrix, axis = 0)
 
 
-def  find_variance(faces_matrix, faces_mean_k, faces_variance):
+def  find_variance(face_matrix, face_mean_k, face_variance):
 	for i in range(0, 1000):
-		data = faces_matrix[i, :]
-		temp = data - faces_mean_k
+		data = face_matrix[i, :]
+		temp = data - face_mean_k
 		temp = temp.reshape((1, 100))
-		faces_variance += np.matmul(temp.T, temp)
-	return faces_variance/1000
+		face_variance += np.matmul(temp.T, temp)
+	return face_variance/1000
 
 
 def find_inverse(matrix):
 	return np.linalg.inv(matrix)
 
 
-def compute_E_hi(E_hi, nu_k, D, delta_i):
+def compute_E_hi(nu_k, D, delta_i):
+	E_hi = np.zeros((1, 1000))
 	for i in range(0, 1000):
 		E_hi[0, i] = (nu_k + D) / (nu_k + delta_i[0, i])
 	return E_hi
@@ -130,93 +151,92 @@ def calculate_log_delta_nu_sum(delta_i, nu_k, log_delta_nu_sum):
 
 
 
-imageDirFaces = "/home/aarivan/Desktop/computer_vision/projects/ComputerVision/project_1/extracted_data/train_data/train_faces/"
-imageDirNonFaces = "/home/aarivan/Desktop/computer_vision/projects/ComputerVision/project_1/extracted_data/train_data/train_non_faces/" 
+imageDirface = "/home/aarivan/Desktop/computer_vision/projects/ComputerVision/project_1/extracted_data/train_data/train_faces/"
+imageDirNonface = "/home/aarivan/Desktop/computer_vision/projects/ComputerVision/project_1/extracted_data/train_data/train_non_faces/" 
 
-faces_image_path_list = []
+face_image_path_list = []
 non_face_image_path_list = []
 
 valid_image_extensions = [".jpg", ".jpeg", ".png", ".tif", ".tiff"] #specify your vald extensions here
 valid_image_extensions = [item.lower() for item in valid_image_extensions]
 
-for file in os.listdir(imageDirFaces):
+for file in os.listdir(imageDirface):
 	extension = os.path.splitext(file)[1]
 	if extension.lower() not in valid_image_extensions:
 		continue
-	faces_image_path_list.append(os.path.join(imageDirFaces, file))
+	face_image_path_list.append(os.path.join(imageDirface, file))
 
-for file in os.listdir(imageDirNonFaces):
+for file in os.listdir(imageDirNonface):
 	extension = os.path.splitext(file)[1]
 	if extension.lower() not in valid_image_extensions:
 		continue
-	non_face_image_path_list.append(os.path.join(imageDirNonFaces, file))
+	non_face_image_path_list.append(os.path.join(imageDirNonface, file))
 
 
-faces_images_grey_scaled = []
-for img_path in faces_image_path_list:
+face_images_grey_scaled = []
+for img_path in face_image_path_list:
 	img = cv2.imread(img_path)
 	img = cv2.cvtColor( img, cv2.COLOR_BGR2GRAY )
 	img_scaled = cv2.resize(img, (10, 10))
-	faces_images_grey_scaled.append(img_scaled)
+	face_images_grey_scaled.append(img_scaled)
 
-non_faces_images_grey_scaled = []
+non_face_images_grey_scaled = []
 for img_path in non_face_image_path_list:
 	img = cv2.imread(img_path)
 	img = cv2.cvtColor( img, cv2.COLOR_BGR2GRAY )
 	img_scaled = cv2.resize(img, (10, 10))
-	non_faces_images_grey_scaled.append(img_scaled)
+	non_face_images_grey_scaled.append(img_scaled)
 
 
-faces_dataset_images = []
-non_faces_dataset_images = []
+face_dataset_images = []
+non_face_dataset_images = []
 
-for faces_image in faces_images_grey_scaled:
-	im_reshape = faces_image.reshape((1, 100))
-	faces_dataset_images.append(im_reshape)
+for face_image in face_images_grey_scaled:
+	im_reshape = face_image.reshape((1, 100))
+	face_dataset_images.append(im_reshape)
 
-for non_faces_images in non_faces_images_grey_scaled:
-	im_reshape = non_faces_images.reshape((1, 100))
-	non_faces_dataset_images.append(im_reshape)
+for non_face_images in non_face_images_grey_scaled:
+	im_reshape = non_face_images.reshape((1, 100))
+	non_face_dataset_images.append(im_reshape)
 
-faces_images_grey_scaled_tupled = tuple(faces_dataset_images)
-faces_images_grey_scaled_matrix = np.vstack(faces_images_grey_scaled_tupled)
+face_images_grey_scaled_tupled = tuple(face_dataset_images)
+face_images_grey_scaled_matrix = np.vstack(face_images_grey_scaled_tupled)
 
-non_faces_images_grey_scaled_tupled = tuple(non_faces_dataset_images)
-non_faces_images_grey_scaled_matrix = np.vstack(non_faces_images_grey_scaled_tupled)
-
-
-faces_nu_k_final = []
-non_faces_nu_k_final = []
-
-faces_mean_k_final = []
-non_faces_mean_k_final = []
-
-faces_sig_k_final = []
-non_faces_sig_k_final = []
-
-faces_covariance_epsilon_final = []
-non_faces_covariance_epsilon_final = []
+non_face_images_grey_scaled_tupled = tuple(non_face_dataset_images)
+non_face_images_grey_scaled_matrix = np.vstack(non_face_images_grey_scaled_tupled)
 
 
-faces_mean_k = faces_matrix_mean = find_mean(faces_images_grey_scaled_matrix)
-non_faces_mean_k = non_faces_matrix_mean = find_mean(non_faces_images_grey_scaled_matrix)
+face_nu_k_final = []
+non_face_nu_k_final = []
 
+face_mean_k_final = []
+non_face_mean_k_final = []
+
+face_sig_k_final = []
+non_face_sig_k_final = []
+
+face_covariance_epsilon_final = []
+non_face_covariance_epsilon_final = []
+
+
+face_mean_k = face_matrix_mean = find_mean(face_images_grey_scaled_matrix)
+non_face_mean_k = non_face_matrix_mean = find_mean(non_face_images_grey_scaled_matrix)
 
 # Initialize Nu to large value
-faces_nu_k = 10000
-non_faces_nu_k = 10000
+face_nu_k = 10
+non_face_nu_k = 10
 
-faces_variance = np.zeros((100, 100))
-faces_sig_k = faces_variance = find_variance(faces_images_grey_scaled_matrix, faces_mean_k, faces_variance)
+face_variance = np.zeros((100, 100))
+face_sig_k = face_variance = find_variance(face_images_grey_scaled_matrix, face_mean_k, face_variance)
 
-non_faces_variance = np.zeros((100, 100))
-non_faces_sig_k = non_faces_variance = find_variance(non_faces_images_grey_scaled_matrix, non_faces_mean_k, non_faces_variance)
+non_face_variance = np.zeros((100, 100))
+non_face_sig_k = non_face_variance = find_variance(non_face_images_grey_scaled_matrix, non_face_mean_k, non_face_variance)
 
 loop_count = 0
-faces_previous_L = 1000000
-non_faces_previous_L = 1000000
-faces_delta_i = np.zeros((1, 1000))
-non_faces_delta_i = np.zeros((1, 1000))
+face_previous_L = 1000000
+non_face_previous_L = 1000000
+face_delta_i = np.zeros((1, 1000))
+non_face_delta_i = np.zeros((1, 1000))
 
 
 while True:
@@ -224,142 +244,147 @@ while True:
 	# EXPECTATION STEP
 
 	# Calculating delta_i
-	faces_sig_k_inverse = find_inverse(faces_sig_k)
-	non_faces_sig_k_inverse = find_inverse(non_faces_sig_k)
+	face_sig_k_inverse = find_inverse(face_sig_k)
+	non_face_sig_k_inverse = find_inverse(non_face_sig_k)
 
 	for i in range(0, 1000):
-		faces_data = faces_images_grey_scaled_matrix[i, :].reshape((1, 100))
-		non_faces_data = non_faces_images_grey_scaled_matrix[i, :].reshape((1, 100))
+		face_data = face_images_grey_scaled_matrix[i, :].reshape((1, 100))
+		non_face_data = non_face_images_grey_scaled_matrix[i, :].reshape((1, 100))
 
-		faces_mu = faces_mean_k.reshape((1, 100))
-		non_faces_mu = non_faces_mean_k.reshape((1, 100))
+		face_mu = face_mean_k.reshape((1, 100))
+		non_face_mu = non_face_mean_k.reshape((1, 100))
 
-		faces_temp = faces_data - faces_mu
-		non_faces_temp = non_faces_data - non_faces_mu
+		face_temp = face_data - face_mu
+		non_face_temp = non_face_data - non_face_mu
 
-		faces_delta = np.matmul(faces_temp, faces_sig_k_inverse)
-		non_faces_delta = np.matmul(non_faces_temp, non_faces_sig_k_inverse)
+		face_delta = np.matmul(face_temp, face_sig_k_inverse)
+		non_face_delta = np.matmul(non_face_temp, non_face_sig_k_inverse)
 
-		faces_delta = np.matmul(faces_delta, faces_temp.T)
-		non_faces_delta = np.matmul(non_faces_delta, non_faces_temp.T)
+		face_delta = np.matmul(face_delta, face_temp.T)
+		non_face_delta = np.matmul(non_face_delta, non_face_temp.T)
 
-		faces_delta_i[0, i] = faces_delta
-		non_faces_delta_i[0, i] = non_faces_delta
+		face_delta_i[0, i] = face_delta
+		non_face_delta_i[0, i] = non_face_delta
 
 	# Computing E[h i]
-	faces_E_hi = np.zeros((1, 1000))
-	faces_E_hi = compute_E_hi(faces_E_hi, faces_nu_k, 100, faces_delta_i)
-
-	non_faces_E_hi = np.zeros((1, 1000))
-	non_faces_E_hi = compute_E_hi(non_faces_E_hi, non_faces_nu_k, 100, non_faces_delta_i)
+	face_E_hi = compute_E_hi(face_nu_k, 100, face_delta_i)
+	non_face_E_hi = compute_E_hi(non_face_nu_k, 100, non_face_delta_i)
 
 	# Compute the E[log h i]
-	faces_E_log_hi = np.zeros((1, 1000))
-	faces_E_log_hi = compute_E_log_hi(faces_E_log_hi, faces_nu_k, 100, faces_delta_i)
+	face_E_log_hi = np.zeros((1, 1000))
+	face_E_log_hi = compute_E_log_hi(face_E_log_hi, face_nu_k, 100, face_delta_i)
 
-	non_faces_E_log_hi = np.zeros((1, 1000))
-	non_faces_E_log_hi = compute_E_log_hi(non_faces_E_log_hi, non_faces_nu_k, 100, non_faces_delta_i)
+	non_face_E_log_hi = np.zeros((1, 1000))
+	non_face_E_log_hi = compute_E_log_hi(non_face_E_log_hi, non_face_nu_k, 100, non_face_delta_i)
 
 	## MAXIMIZATION STEP ##
 
 	# Calculating New Mean
-	faces_E_hi_sum = np.sum(faces_E_hi, axis = 1)
-	non_faces_E_hi_sum = np.sum(non_faces_E_hi, axis = 1)
+	face_E_hi_sum = np.sum(face_E_hi, axis = 1)
+	non_face_E_hi_sum = np.sum(non_face_E_hi, axis = 1)
 
-	faces_new_mean_k = np.zeros((1, 100))
-	non_faces_new_mean_k = np.zeros((1, 100))
+	face_new_mean_k = np.zeros((1, 100))
+	non_face_new_mean_k = np.zeros((1, 100))
 
-	faces_mean_k = faces_new_mean_k = calculate_new_mean(faces_images_grey_scaled_matrix, faces_mean_k, faces_E_hi, faces_new_mean_k, faces_E_hi_sum, 100)
-	non_faces_mean_k = non_faces_new_mean_k = calculate_new_mean(non_faces_images_grey_scaled_matrix, non_faces_mean_k, non_faces_E_hi, non_faces_new_mean_k, non_faces_E_hi_sum, 100)
+	face_mean_k = face_new_mean_k = calculate_new_mean(face_images_grey_scaled_matrix, face_mean_k, face_E_hi, face_new_mean_k, face_E_hi_sum, 100)
+	non_face_mean_k = non_face_new_mean_k = calculate_new_mean(non_face_images_grey_scaled_matrix, non_face_mean_k, non_face_E_hi, non_face_new_mean_k, non_face_E_hi_sum, 100)
+
 
 	# Calculating New Sigma
-	faces_new_sig_k = np.zeros((100, 100))
-	non_faces_new_sig_k = np.zeros((100, 100))
+	face_new_sig_k = np.zeros((100, 100))
+	non_face_new_sig_k = np.zeros((100, 100))
 
-	faces_sig_k = faces_new_sig_k = calculate_new_sig(faces_images_grey_scaled_matrix, faces_mean_k, faces_E_hi, faces_E_hi_sum, faces_new_sig_k, 100)
-	non_faces_sig_k = non_faces_new_sig_k = calculate_new_sig(non_faces_images_grey_scaled_matrix, non_faces_mean_k, non_faces_E_hi, non_faces_E_hi_sum, non_faces_new_sig_k, 100)
+	face_sig_k = face_new_sig_k = calculate_new_sig(face_images_grey_scaled_matrix, face_mean_k, face_E_hi, face_E_hi_sum, face_new_sig_k, 100)
+	non_face_sig_k = non_face_new_sig_k = calculate_new_sig(non_face_images_grey_scaled_matrix, non_face_mean_k, non_face_E_hi, non_face_E_hi_sum, non_face_new_sig_k, 100)
 
-	faces_E_log_hi_sum = np.sum(faces_E_log_hi, axis = 1)
-	non_faces_E_log_hi_sum = np.sum(non_faces_E_log_hi, axis = 1)
+	face_E_log_hi_sum = np.sum(face_E_log_hi, axis = 1)
+	non_face_E_log_hi_sum = np.sum(non_face_E_log_hi, axis = 1)
+
 
 	# Calculating New Nu
-	faces_nu_k = optimize.fminbound(t_cost, 0, 10000, args=(faces_E_hi, faces_E_hi_sum, faces_E_log_hi, faces_E_log_hi_sum, 1000))
-	non_faces_nu_k = optimize.fminbound(t_cost, 0, 10000, args=(non_faces_E_hi, non_faces_E_hi_sum, non_faces_E_log_hi, non_faces_E_log_hi_sum, 1000))
+	face_nu_k = optimize.fminbound(t_cost, 0, 10000, args=(face_E_hi, face_E_hi_sum, face_E_log_hi, face_E_log_hi_sum, 1000))
+	non_face_nu_k = optimize.fminbound(t_cost, 0, 10000, args=(non_face_E_hi, non_face_E_hi_sum, non_face_E_log_hi, non_face_E_log_hi_sum, 1000))
 	
+
 	# Calculating Log likelihood
-	faces_new_delta_i = np.zeros((1, 1000))
-	non_faces_new_delta_i = np.zeros((1, 1000))
+	face_new_delta_i = np.zeros((1, 1000))
+	non_face_new_delta_i = np.zeros((1, 1000))
 
-	faces_sig_k_inverse = find_inverse(faces_sig_k)
-	non_faces_sig_k_inverse = find_inverse(non_faces_sig_k)
 
-	faces_delta_i = faces_new_delta_i = calculate_delta_i(faces_images_grey_scaled_matrix, faces_mean_k, faces_sig_k_inverse, faces_new_delta_i, 100)
-	non_faces_delta_i = non_faces_new_delta_i = calculate_delta_i(non_faces_images_grey_scaled_matrix, non_faces_mean_k, non_faces_sig_k_inverse, non_faces_new_delta_i, 100)
+	face_sig_k_inverse = find_inverse(face_sig_k)
+	non_face_sig_k_inverse = find_inverse(non_face_sig_k)
+
+	face_delta_i = face_new_delta_i = calculate_delta_i(face_images_grey_scaled_matrix, face_mean_k, face_sig_k_inverse, face_new_delta_i, 100)
+	non_face_delta_i = non_face_new_delta_i = calculate_delta_i(non_face_images_grey_scaled_matrix, non_face_mean_k, non_face_sig_k_inverse, non_face_new_delta_i, 100)
+
 
 	# Calculating value of 'L'
 	size = 1000
-	(faces_sig_sign, faces_sig_k_logdet) = calculate_slogdet(faces_sig_k)
-	(non_faces_sig_sign, non_faces_sig_k_logdet) = calculate_slogdet(non_faces_sig_k)
+	(face_sig_sign, face_sig_k_logdet) = calculate_slogdet(face_sig_k)
+	(non_face_sig_sign, non_face_sig_k_logdet) = calculate_slogdet(non_face_sig_k)
 
-	faces_sig_k_logdet_half = faces_sig_k_logdet / 2
-	non_faces_sig_k_logdet_half = non_faces_sig_k_logdet / 2
+	face_sig_k_logdet_half = face_sig_k_logdet / 2
+	non_face_sig_k_logdet_half = non_face_sig_k_logdet / 2
 
-	faces_gammaln_nu_D_half = calculate_gammaln(faces_nu_k + 100)
-	non_faces_gammaln_nu_D_half = calculate_gammaln(non_faces_nu_k + 100)
+	face_gammaln_nu_D_half = calculate_gammaln(face_nu_k + 100)
+	non_face_gammaln_nu_D_half = calculate_gammaln(non_face_nu_k + 100)
 
-	# faces_log_nu_pi = (100 / 2) * np.log(faces_nu_k * math.pi)
-	faces_log_nu_pi = calculate_log_nu_pi(100, faces_nu_k)
-	# non_faces_log_nu_pi = (100 / 2) * np.log(non-faces_nu_k * math.pi)
-	non_faces_log_nu_pi = calculate_log_nu_pi(100, non_faces_nu_k)
 
-	faces_gammaln_nu_half = calculate_gammaln(faces_nu_k)
-	non_faces_gammaln_nu_half = calculate_gammaln(non_faces_nu_k)
+	# face_log_nu_pi = (100 / 2) * np.log(face_nu_k * math.pi)
+	face_log_nu_pi = calculate_log_nu_pi(100, face_nu_k)
+	# non_face_log_nu_pi = (100 / 2) * np.log(non-face_nu_k * math.pi)
+	non_face_log_nu_pi = calculate_log_nu_pi(100, non_face_nu_k)
+
+	face_gammaln_nu_half = calculate_gammaln(face_nu_k)
+	non_face_gammaln_nu_half = calculate_gammaln(non_face_nu_k)
+
 	
-	faces_L = size * (faces_gammaln_nu_D_half - faces_log_nu_pi - faces_sig_k_logdet_half - faces_gammaln_nu_half)
-	non_faces_L = size * (non_faces_gammaln_nu_D_half - non_faces_log_nu_pi - non_faces_sig_k_logdet_half - non_faces_gammaln_nu_half)
+	face_L = size * (face_gammaln_nu_D_half - face_log_nu_pi - face_sig_k_logdet_half - face_gammaln_nu_half)
+	non_face_L = size * (non_face_gammaln_nu_D_half - non_face_log_nu_pi - non_face_sig_k_logdet_half - non_face_gammaln_nu_half)
 
-	faces_log_delta_nu_sum, non_faces_log_delta_nu_sum = 0, 0
+	face_log_delta_nu_sum, non_face_log_delta_nu_sum = 0, 0
 
-	faces_log_delta_nu_sum = calculate_log_delta_nu_sum(faces_delta_i, faces_nu_k, faces_log_delta_nu_sum)
-	non_faces_log_delta_nu_sum = calculate_log_delta_nu_sum(non_faces_delta_i, non_faces_nu_k, non_faces_log_delta_nu_sum)
+	face_log_delta_nu_sum = calculate_log_delta_nu_sum(face_delta_i, face_nu_k, face_log_delta_nu_sum)
+	non_face_log_delta_nu_sum = calculate_log_delta_nu_sum(non_face_delta_i, non_face_nu_k, non_face_log_delta_nu_sum)
 
-	faces_log_delta_nu_sum /= 2
-	non_faces_log_delta_nu_sum /= 2
+	face_log_delta_nu_sum /= 2
+	non_face_log_delta_nu_sum /= 2
 
-	faces_L -= ((faces_nu_k + 100) * faces_log_delta_nu_sum)
-	non_faces_L -= ((non_faces_nu_k + 100) * non_faces_log_delta_nu_sum)
+
+	face_L -= ((face_nu_k + 100) * face_log_delta_nu_sum)
+	non_face_L -= ((non_face_nu_k + 100) * non_face_log_delta_nu_sum)
 
 	loop_count += 1
 	
 	print "Iterations Completed: " + str(loop_count)
 	print
 
-	if abs(faces_L - faces_previous_L) > 0.01:
-		faces_previous_L = faces_L
-	if abs(faces_L - faces_previous_L) > 0.01:
-		non_faces_previous_L = non_faces_L
+	if abs(face_L - face_previous_L) > 0.01:
+		face_previous_L = face_L
+	if abs(face_L - face_previous_L) > 0.01:
+		non_face_previous_L = non_face_L
 	if loop_count > 100:
 		break
 
-faces_nu_k_final = faces_nu_k
-non_faces_nu_k_final = non_faces_nu_k
+face_nu_k_final = face_nu_k
+non_face_nu_k_final = non_face_nu_k
 
-faces_mean_k_final = faces_mean_k
-non_faces_mean_k_final = non_faces_mean_k
+face_mean_k_final = face_mean_k
+non_face_mean_k_final = non_face_mean_k
 
-faces_sig_k_final = faces_sig_k
-non_faces_sig_k_final = non_faces_sig_k
+face_sig_k_final = face_sig_k
+non_face_sig_k_final = non_face_sig_k
 
-print faces_nu_k_final
-print faces_mean_k_final.shape
-print faces_mean_k_final
-print faces_sig_k_final.shape
-print faces_sig_k_final
-print
-print non_faces_nu_k_final
-print non_faces_mean_k_final.shape
-print non_faces_mean_k_final
-print non_faces_sig_k_final.shape
-print non_faces_sig_k_final
+# print face_nu_k_final
+# print face_mean_k_final.shape
+# print face_mean_k_final
+# print face_sig_k_final.shape
+# print face_sig_k_final
+# print
+# print non_face_nu_k_final
+# print non_face_mean_k_final.shape
+# print non_face_mean_k_final
+# print non_face_sig_k_final.shape
+# print non_face_sig_k_final
 
-
+print multivariate_t(non_face_images_grey_scaled_matrix, non_face_mean_k_final, non_face_sig_k_final, non_face_nu_k_final, 100, 1000)
